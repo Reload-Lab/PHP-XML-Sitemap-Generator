@@ -66,7 +66,7 @@ $debug = 0;
 
 // start xml
 $start_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n".
-	"<?xml-stylesheet type=\"text/xsl\" href=\"https://raw.githubusercontent.com/domenico-gigante/PHP-XML-Sitemap-Generator/main/xml-sitemap.xsl\"?>\n".
+	"<?xml-stylesheet type=\"text/xsl\" href=\"https://raw.githubusercontent.com/Reload-Lab/PHP-XML-Sitemap-Generator/main/xml-sitemap.xsl\"?>\n".
 	"<!-- Created with ReloadLab PHP XML Sitemap Generator ".VERSION." https://www.reloadlab.it -->\n".
 	"<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"\n".
 	"        xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n".
