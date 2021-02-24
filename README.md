@@ -1,1 +1,1 @@
-# PHP-XML-Sitemap-Generator
+# PHP XML Sitemap Generator
