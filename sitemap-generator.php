@@ -32,7 +32,7 @@ $file = 'sitemap.xml';
 
 // Set the start URL. Here is http used, use https:// for 
 // SSL websites.
-$start_url = 'https://www.mefop.it/';       
+$start_url = 'https://www.reloadlab.it/';       
 
 // Define here the URLs to skip. All URLs that start with 
 // the defined URL will be skipped too.
