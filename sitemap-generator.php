@@ -1,21 +1,24 @@
 <?php
-/*************************************************************
- ReloadLab PHP XML Sitemap Generator
- Sviluppata sulla base di iProDev PHP XML Sitemap Generator
- Simple site crawler to create a search engine XML Sitemap.
- Version 1.0
- Free to use, without any warranty.
- Written by Reload(Domenico Gigante) https://www.reloadlab.it 24/Feb/2021.
+/***
+ * ReloadLab PHP XML Sitemap Generator
+ * Based on iProDev PHP XML Sitemap Generator 
+ * (http://iprodev.github.io/PHP-XML-Sitemap-Generator/)
+ * Simple site crawler to create a search engine XML Sitemap.
+ * Version 1.0
+ * Free to use, without any warranty.
+ * Written by Reload (Domenico Gigante) https://www.reloadlab.it 24/Feb/2021.
+ ***/
 
-*************************************************************/
-
-// Prevents PHP maximum execution time
+// To scan large sites (more than 1,000 pages) it can take more than 30 seconds. 
+// This avoids "PHP Fatal error: Maximum execution time of 30 seconds exceeded"
 set_time_limit(0);
 
-// This sets the maximum amount of memory in bytes that a script is allowed to allocate. 
-// Alzare il limite, in base alle esigenze, se il sito è di grandi dimensioni
+// To scan large sites (more than 1,000 pages) can require a lot of memory. 
+// Change memory_limit so that the script does not hang before the scan is finished 
+// with "PHP Fatal error: Allowed memory size of x bytes exhausted"
 ini_set('memory_limit', '256M');
 
+// This script use PHP Simple HTML DOM Parser (https://simplehtmldom.sourceforge.io/) 
 // version 1.7 o 1.9, if PHP 5.6+ is available
 require_once('simple_html_dom.php');
 
@@ -55,13 +58,14 @@ $freq = 'weekly';
 // Page priority
 $priority = '1';
 
-// numero di url scansionate prima di scriverle sul file xml
+// Number of urls scanned before updating xml file
 $max_url_write = 100;
 
-// numero di sitemap da conservare prima di cancellare
+// Number of old sitemap xml files to keep before deleting them.
+// 0 for none rotation
 $num_rotation = 4;
 
-// debug 
+// CURL debug: Set to 1 for verbose
 $debug = 0;
 
 // start xml
@@ -73,7 +77,7 @@ $start_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n".
 	"        xsi:schemaLocation=\"http://www.sitemaps.org/schemas/sitemap/0.9\n".
 	"        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd\">\n".
 	"  <url>\n".
-	"    <loc>".htmlentities($start_url)."</loc>\n".
+	"    <loc>".htmlentities($start_url, ENT_QUOTES, 'UTF-8', true)."</loc>\n".
 	"    <changefreq>$freq</changefreq>\n".
 	"    <priority>$priority</priority>\n".
 	"  </url>\n";
@@ -90,7 +94,7 @@ function rel2abs($rel, $base)
 		return 'http:'.$rel;
 	}
 	
-	/* return if already absolute URL */
+	// return if already absolute URL
 	if(parse_url($rel, PHP_URL_SCHEME) != ''){
 		
 		return $rel;
@@ -98,35 +102,35 @@ function rel2abs($rel, $base)
 	
 	$first_char = substr($rel, 0, 1);
 
-	/* queries and anchors */
+	// queries and anchors
 	if($first_char == '#' || $first_char == '?'){
 		
 		return $base.$rel;
 	}
 
-	/* parse base URL and convert to local variables:
-	$scheme, $host,  $path */
+	// parse base URL and convert to local variables:
+	// $scheme, $host,  $path
 	extract(parse_url($base));
 
-	/* remove non-directory element from path */
+	// remove non-directory element from path
 	$path = preg_replace('#/[^/]*$#', '', $path);
 
-	/* destroy path if relative url points to root */
+	// destroy path if relative url points to root
 	if($first_char ==  '/'){
 		
 		$path = '';
 	}
 	
-	/* dirty absolute URL */
+	// dirty absolute URL
 	$abs =  $host.$path.'/'.$rel;
 	
-	/* replace '//' or '/./' or '/foo/../' with '/' */
+	// replace '//' or '/./' or '/foo/../' with '/'
 	$re =  array('#(/.?/)#', '#/(?!..)[^/]+/../#');
 	for($n = 1; $n > 0;  $abs = preg_replace($re, '/', $abs, -1, $n)){
 		
 	}
 	
-	/* absolute URL is ready! */
+	// absolute URL is ready!
 	return  $scheme.'://'.$abs;
 }
 
@@ -159,7 +163,9 @@ function GetUrl($url)
 
 function Scan($url, &$count_url, &$str_xml)
 {
-	global $file, $start_url, $max_url_write, $end_xml, $scanned, $extension, $skip, $freq, $priority;
+	global $file, $start_url, $max_url_write, $end_xml;
+	global $scanned, $extension, $skip, $freq, $priority;
+	global $callStartTime, $total_url;
 	
 	if($count_url == 0){
 		
@@ -167,6 +173,8 @@ function Scan($url, &$count_url, &$str_xml)
 	}
 
 	echo $url.NL;
+	
+	$total_url++;
 
 	$url = filter_var($url, FILTER_SANITIZE_URL);
 	
@@ -240,18 +248,26 @@ function Scan($url, &$count_url, &$str_xml)
 							$pr = number_format(round($priority / count(explode('/', trim(str_ireplace(array('http://', 'https://'), '', $next_url), '/'))) + 0.5, 3), 1);
 							
 							$str_xml .= "  <url>\n".
-								"    <loc>".htmlentities($next_url)."</loc>\n".
+								"    <loc>".htmlentities($next_url, ENT_QUOTES, 'UTF-8', true)."</loc>\n".
 								"    <changefreq>$freq</changefreq>\n".
 								"    <priority>$pr</priority>\n".
 								"  </url>\n";
 								
 							$count_url++;
 							
+							// update sitemap xml file
 							if($count_url >= $max_url_write){
 								
 								if(smwrite($file, $str_xml.$end_xml)){
 									
 									$count_url = 0;
+									
+									$callEndTime = microtime(true); 
+									$callTime = $callEndTime - $callStartTime;
+									
+									echo 'Total url scanned: '.$total_url.NL;
+									echo 'Time elapsed: '.sprintf('%.4f', $callTime).' seconds'.NL;
+									echo 'Current memory usage: '.(memory_get_usage(true) / 1024 / 1024).' MB'.NL;
 								}
 							}
 							
@@ -264,6 +280,8 @@ function Scan($url, &$count_url, &$str_xml)
 	}
 }
 
+// Remove The Last Line From A File In PHP
+// Thanks to Philip Norton (https://www.hashbangcode.com/article/remove-last-line-file-php)
 function trimfile($filename)
 { 
 	// File size
@@ -305,9 +323,8 @@ function trimfile($filename)
 		// Read $bite characters of the file into a string.
 		$string = fread($file_handle, $bite) or die('Can\'t read from file '.$filename.'.');
 	 
-		/* If we happen to have read to the end of the file then we need to ignore 
-		 * the lastfile line as this will be a new line character.
-		 */
+		// If we happen to have read to the end of the file then we need to ignore 
+		// the lastfile line as this will be a new line character.
 		if($pos + $bite >= $filesize){
 			
 			$string = substr_replace($string, '', -1);
@@ -394,7 +411,7 @@ function rotate($sitemap)
 	}
 	
 	$fileremove = '';
-	$lastfile = date('Ymd');
+	$lastfile = date('YmdHis');
 	$num = 0;
 	
 	$info_sm = explode('.', $sitemap);
@@ -412,7 +429,7 @@ function rotate($sitemap)
 				
 				if($file == $sitemap){
 					
-					$filename = $filename_sm.'.'.date('Ymd').'.'.$ext_sm;
+					$filename = $filename_sm.'.'.date('YmdHis').'.'.$ext_sm;
 					@rename($cur_dir.$sitemap, $cur_dir.$filename);
 					$num++;
 				} else{
@@ -443,24 +460,51 @@ function rotate($sitemap)
 	}
 }
 
+// shutdown
+function check_for_fatal()
+{
+	$error = error_get_last();
+    if($error['type'] == E_ERROR){
+			
+		echo '['.date('Y-m-d H:i:s').'] PHP Fatal error: '.$error['message'].' in '.$error['file'].' on line '.$error['line'].NL;
+	}
+}
+register_shutdown_function('check_for_fatal');
+
+
+//--------------
+$callStartTime = microtime(true);
+echo date('Y-m-d H:i:s').' Start to scan '.$start_url.NL;
+
+// First rotate old Sitemap xml files
 rotate($file);
 
+// Start writing xml file
 if(smwrite($file, $start_xml.$end_xml, true)){
-
-	$start_url = filter_var($start_url, FILTER_SANITIZE_URL);
 	
+	// Internal variables
 	$scanned = array();
-	
 	$count_url = 0;
+	$total_url = 0;
 	$str_xml = 0;
 	
+	$start_url = filter_var($start_url, FILTER_SANITIZE_URL);
+	
+	// Start scan
 	Scan($start_url, $count_url, $str_xml);
 	
+	// End writing xml file
 	if($count_url > 0 && $count_url < $max_url_write){
 		
 		smwrite($file, $str_xml.$end_xml);
 	}
 }
 
+$callEndTime = microtime(true); 
+$callTime = $callEndTime - $callStartTime;
+
+echo date('Y-m-d H:i:s').' End scan'.NL;
+echo 'Time elapsed: '.sprintf('%.4f', $callTime).' seconds'.NL;
+echo 'Peak memory usage: '.(memory_get_peak_usage(true) / 1024 / 1024).' MB'.NL;
 echo 'Done.'.NL;
 echo $file.' created.'.NL;
