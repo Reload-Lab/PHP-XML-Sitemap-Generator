@@ -266,7 +266,7 @@ function Scan($url, &$count_url, &$str_xml)
 									$callTime = $callEndTime - $callStartTime;
 									
 									echo 'Total url scanned: '.$total_url.NL;
-									echo 'Time elapsed: '.sprintf('%.4f', $callTime).' seconds'.NL;
+									echo 'Time elapsed: '.secondsToTime($callTime).' seconds'.NL;
 									echo 'Current memory usage: '.(memory_get_usage(true) / 1024 / 1024).' MB'.NL;
 								}
 							}
@@ -460,6 +460,16 @@ function rotate($sitemap)
 	}
 }
 
+// pass in the number of seconds elapsed to get hours:minutes:seconds returned
+function secondsToTime($s)
+{
+	$h = floor($s / 3600);
+	$s -= $h * 3600;
+	$m = floor($s / 60);
+	$s -= $m * 60;
+	return $h.':'.sprintf('%02d', $m).':'.sprintf('%02d', $s);
+}
+
 // shutdown
 function check_for_fatal()
 {
@@ -503,8 +513,8 @@ if(smwrite($file, $start_xml.$end_xml, true)){
 $callEndTime = microtime(true); 
 $callTime = $callEndTime - $callStartTime;
 
-echo date('Y-m-d H:i:s').' End scan'.NL;
-echo 'Time elapsed: '.sprintf('%.4f', $callTime).' seconds'.NL;
+echo date('Y-m-d H:i:s').' End to scan '.$start_url.NL;
+echo 'Time elapsed: '.secondsToTime($callTime).' seconds'.NL;
 echo 'Peak memory usage: '.(memory_get_peak_usage(true) / 1024 / 1024).' MB'.NL;
 echo 'Done.'.NL;
 echo $file.' created.'.NL;
