@@ -4,7 +4,7 @@
  * Based on iProDev PHP XML Sitemap Generator 
  * (http://iprodev.github.io/PHP-XML-Sitemap-Generator/)
  * Simple site crawler to create a search engine XML Sitemap.
- * Version 1.0
+ * Version 1.1.0
  * Free to use, without any warranty.
  * Written by Reload (Domenico Gigante) https://www.reloadlab.it 24/Feb/2021.
  ***/
@@ -26,16 +26,36 @@ require_once('simple_html_dom.php');
 // true:  As CLI script.
 // false: As Website script.
 define('CLI', true);
-
-define('VERSION', '1.0');                                            
 define('NL', CLI? "\n": '<br>');
+
+define('VERSION', '1.1.0');
+
+// Default config ==========================
+// Set the start URL. Here is http used, use https:// for 
+// SSL websites.
+$start_url = 'https://www.example.com/';       
 
 // Set the output file name.
 $file = 'sitemap.xml';
 
-// Set the start URL. Here is http used, use https:// for 
-// SSL websites.
-$start_url = 'https://www.insegnareonline.com/';       
+// Set the output folder
+$folder = '';
+
+// Scan frequency
+$frequency = 'weekly';
+
+// Page priority
+$priority = '1';
+
+// Number of urls scanned before updating xml file
+$max_url_write = 100;
+
+// Number of old sitemap xml files to keep before deleting them.
+// 0 for none rotation
+$num_rotation = 4;
+
+// CURL debug: Set to 1 for verbose
+$debug = false;
 
 // Define here the URLs to skip. All URLs that start with 
 // the defined URL will be skipped too.
@@ -52,21 +72,237 @@ $extension = array(
 	'/',
 ); 
 
-// Scan frequency
-$freq = 'weekly';
-
-// Page priority
-$priority = '1';
-
-// Number of urls scanned before updating xml file
-$max_url_write = 100;
-
-// Number of old sitemap xml files to keep before deleting them.
-// 0 for none rotation
-$num_rotation = 4;
-
-// CURL debug: Set to 1 for verbose
-$debug = 0;
+// Pass parameters as cli arguments or GET/POST variables
+if(PHP_SAPI == 'cli'){
+	
+	$short_options = 'u::f::d::';
+	$long_options = array(
+		'url::', 
+		'file::', 
+		'folder::', 
+		'frequency::', 
+		'priority::', 
+		'max_url_write::',
+		'num_rotation::',
+		'debug',
+		'skip::',
+		'extension::'
+	);
+	$options = getopt($short_options, $long_options);
+	
+	// start_url
+	if(isset($options['u']) || isset($options['url'])){
+		
+		$tmp1 = isset($options['u'])? $options['u']: $options['url'];
+		if(is_string($tmp1)){
+			
+			$start_url = $tmp1;
+		}
+	}
+	
+	// file
+	if(isset($options['f']) || isset($options['file'])){
+		
+		$tmp2 = isset($options['f'])? $options['f']: $options['file'];
+		if(is_string($tmp2)){
+			
+			$file = $tmp2;
+		}
+	}
+	
+	// folder
+	if(isset($options['d']) || isset($options['folder'])){
+		
+		$tmp3 = isset($options['d'])? $options['d']: $options['folder'];
+		if(is_string($tmp3)){
+			
+			$folder = $tmp3;
+		}
+	}
+	
+	// frequency
+	if(isset($options['frequency'])){
+		
+		if(is_string($options['frequency']) 
+			&& in_array($options['frequency'], array(
+				'Always',
+				'Hourly',
+				'Daily',
+				'Weekly',
+				'Monthly',
+				'Yearly',
+				'Never'
+			))
+		){
+			$frequency = $options['frequency'];
+		}
+	}
+	
+	// priority
+	if(isset($options['priority'])){
+		
+		if(is_numeric($options['priority']) 
+			&& $options['priority'] >= 0 
+			&& $options['priority'] <= 1
+		){
+			$priority = $options['priority'];
+		}
+	}
+	
+	// max_url_write
+	if(isset($options['max_url_write'])){
+		
+		if(is_numeric($options['max_url_write']) 
+			&& $options['max_url_write'] > 0
+		){
+			$max_url_write = (int) $options['max_url_write'];
+		}
+	}
+	
+	// num_rotation
+	if(isset($options['num_rotation'])){
+		
+		if(is_numeric($options['num_rotation']) 
+			&& $options['num_rotation'] >= 0
+		){
+			$num_rotation = (int) $options['num_rotation'];
+		}
+	}
+	
+	// debug
+	if(isset($options['debug'])){
+		
+		if(is_bool($options['debug'])){
+			
+			$debug = true;
+		}
+	}
+	
+	// skip
+	if(isset($options['skip'])){
+		
+		if(is_string($options['skip'])){
+			
+			$skip = array_map('trim', explode(',', $options['skip']));
+		}
+	}
+	
+	// extension
+	if(isset($options['extension'])){
+		
+		if(is_string($options['extension'])){
+			
+			$extension = array_map('trim', explode(',', $options['extension']));
+		}
+	}
+} else{
+	
+	// start_url
+	if(isset($_REQUEST['u']) || isset($_REQUEST['url'])){
+		
+		$tmp1 = isset($_REQUEST['u'])? $_REQUEST['u']: $_REQUEST['url'];
+		if(is_string($tmp1)){
+			
+			$start_url = $tmp1;
+		}
+	}
+	
+	// file
+	if(isset($_REQUEST['f']) || isset($_REQUEST['file'])){
+		
+		$tmp2 = isset($_REQUEST['f'])? $_REQUEST['f']: $_REQUEST['file'];
+		if(is_string($tmp2)){
+			
+			$file = $tmp2;
+		}
+	}
+	
+	// folder
+	if(isset($_REQUEST['d']) || isset($_REQUEST['folder'])){
+		
+		$tmp3 = isset($_REQUEST['d'])? $_REQUEST['d']: $_REQUEST['folder'];
+		if(is_string($tmp3)){
+			
+			$folder = $tmp3;
+		}
+	}
+	
+	// frequency
+	if(isset($_REQUEST['frequency'])){
+		
+		if(is_string($_REQUEST['frequency']) 
+			&& in_array($_REQUEST['frequency'], array(
+				'Always',
+				'Hourly',
+				'Daily',
+				'Weekly',
+				'Monthly',
+				'Yearly',
+				'Never'
+			))
+		){
+			$frequency = $_REQUEST['frequency'];
+		}
+	}
+	
+	// priority
+	if(isset($_REQUEST['priority'])){
+		
+		if(is_numeric($_REQUEST['priority']) 
+			&& $_REQUEST['priority'] >= 0 
+			&& $_REQUEST['priority'] <= 1
+		){
+			$priority = $_REQUEST['priority'];
+		}
+	}
+	
+	// max_url_write
+	if(isset($_REQUEST['max_url_write'])){
+		
+		if(is_numeric($_REQUEST['max_url_write']) 
+			&& $_REQUEST['max_url_write'] > 0
+		){
+			$max_url_write = (int) $_REQUEST['max_url_write'];
+		}
+	}
+	
+	// num_rotation
+	if(isset($_REQUEST['num_rotation'])){
+		
+		if(is_numeric($_REQUEST['num_rotation']) 
+			&& $_REQUEST['num_rotation'] >= 0
+		){
+			$num_rotation = (int) $_REQUEST['num_rotation'];
+		}
+	}
+	
+	// debug
+	if(isset($_REQUEST['debug'])){
+		
+		if($_REQUEST['debug'] == 1){
+			
+			$debug = true;
+		}
+	}
+	
+	// skip
+	if(isset($_REQUEST['skip'])){
+		
+		if(is_array($_REQUEST['skip'])){
+			
+			$skip = (array) $_REQUEST['skip'];
+		}
+	}
+	
+	// extension
+	if(isset($_REQUEST['extension'])){
+		
+		if(is_array($_REQUEST['extension'])){
+			
+			$extension = (array) $_REQUEST['extension'];
+		}
+	}
+}
 
 // start xml
 $start_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n".
@@ -78,7 +314,7 @@ $start_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n".
 	"        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd\">\n".
 	"  <url>\n".
 	"    <loc>".htmlentities($start_url, ENT_QUOTES, 'UTF-8', true)."</loc>\n".
-	"    <changefreq>$freq</changefreq>\n".
+	"    <changefreq>$frequency</changefreq>\n".
 	"    <priority>$priority</priority>\n".
 	"  </url>\n";
 
@@ -163,8 +399,8 @@ function GetUrl($url)
 
 function Scan($url, &$count_url, &$str_xml)
 {
-	global $file, $start_url, $max_url_write, $end_xml;
-	global $scanned, $extension, $skip, $freq, $priority;
+	global $file, $folder, $start_url, $max_url_write, $end_xml;
+	global $scanned, $extension, $skip, $frequency, $priority;
 	global $callStartTime, $total_url;
 	
 	if($count_url == 0){
@@ -249,7 +485,7 @@ function Scan($url, &$count_url, &$str_xml)
 							
 							$str_xml .= "  <url>\n".
 								"    <loc>".htmlentities($next_url, ENT_QUOTES, 'UTF-8', true)."</loc>\n".
-								"    <changefreq>$freq</changefreq>\n".
+								"    <changefreq>$frequency</changefreq>\n".
 								"    <priority>$pr</priority>\n".
 								"  </url>\n";
 								
@@ -258,7 +494,7 @@ function Scan($url, &$count_url, &$str_xml)
 							// update sitemap xml file
 							if($count_url >= $max_url_write){
 								
-								if(smwrite($file, $str_xml.$end_xml)){
+								if(smwrite($folder.$file, $str_xml.$end_xml)){
 									
 									$count_url = 0;
 									
@@ -401,7 +637,7 @@ function smwrite($file, $str, $start_new_sitemap = false)
 	return true;
 }
 
-function rotate($sitemap)
+function rotate($sitemap, $folder = null)
 {	
 	global $num_rotation;
 	
@@ -418,7 +654,7 @@ function rotate($sitemap)
 	$ext_sm = array_pop($info_sm);
 	$filename_sm = implode('.', $info_sm);
 	
-	$cur_dir = rtrim(getcwd(), '/').'/';
+	$cur_dir = rtrim($folder != ''? $folder: getcwd(), '/').'/';
 	$files = array_diff(scandir($cur_dir), array('.', '..'));
 	
 	if($files){
@@ -487,10 +723,10 @@ $callStartTime = microtime(true);
 echo date('Y-m-d H:i:s').' Start to scan '.$start_url.NL;
 
 // First rotate old Sitemap xml files
-rotate($file);
+rotate($file, $folder);
 
 // Start writing xml file
-if(smwrite($file, $start_xml.$end_xml, true)){
+if(smwrite($folder.$file, $start_xml.$end_xml, true)){
 	
 	// Internal variables
 	$scanned = array();
@@ -506,7 +742,7 @@ if(smwrite($file, $start_xml.$end_xml, true)){
 	// End writing xml file
 	if($count_url > 0 && $count_url < $max_url_write){
 		
-		smwrite($file, $str_xml.$end_xml);
+		smwrite($folder.$file, $str_xml.$end_xml);
 	}
 }
 
