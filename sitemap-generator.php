@@ -35,7 +35,7 @@ $file = 'sitemap.xml';
 
 // Set the start URL. Here is http used, use https:// for 
 // SSL websites.
-$start_url = 'https://www.reloadlab.it/';       
+$start_url = 'https://www.insegnareonline.com/';       
 
 // Define here the URLs to skip. All URLs that start with 
 // the defined URL will be skipped too.
@@ -514,6 +514,7 @@ $callEndTime = microtime(true);
 $callTime = $callEndTime - $callStartTime;
 
 echo date('Y-m-d H:i:s').' End to scan '.$start_url.NL;
+echo 'Total url scanned: '.$total_url.NL;
 echo 'Time elapsed: '.secondsToTime($callTime).' seconds'.NL;
 echo 'Peak memory usage: '.(memory_get_peak_usage(true) / 1024 / 1024).' MB'.NL;
 echo 'Done.'.NL;
